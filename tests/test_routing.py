@@ -190,7 +190,7 @@ def test_router(client: TestClient) -> None:
     response = client.post("/")
     assert response.status_code == 405
     assert response.text == "Method Not Allowed"
-    assert set(response.headers["allow"].split(", ")) == {"HEAD", "GET"}
+    assert response.headers["allow"] == "GET, HEAD"
 
     response = client.get("/foo")
     assert response.status_code == 404
@@ -1264,3 +1264,14 @@ def test_host_routing_is_case_insensitive(test_client_factory: TestClientFactory
     response = test_client_factory(router).get("/", headers={"host": "Sub.example.ORG"})
     assert response.status_code == 200
     assert response.text == "sub"
+
+
+def test_405_allow_header_ordering(test_client_factory: TestClientFactory) -> None:
+    def endpoint(request: Request) -> Response:
+        return Response("ok")
+
+    route = Route("/", endpoint=endpoint, methods=["POST", "GET"])
+    client = test_client_factory(route)
+    response = client.put("/")
+    assert response.status_code == 405
+    assert response.headers["allow"] == "GET, HEAD, POST"
